@@ -437,24 +437,42 @@ class MenuBuilder {
                         focusedWindow.setFullScreen(!focusedWindow.isFullScreen());
                     }
                 }
+            },
+            
+            // Separator
+            { type: 'separator' },
+            
+            // Toggle Developer Tools - ALWAYS AVAILABLE
+            {
+                label: 'Toggle Developer Tools',
+                accelerator: this.accelerators.toggleDevTools,
+                click: (item, focusedWindow) => {
+                    // Toggle DevTools for focused window
+                    if (focusedWindow) {
+                        focusedWindow.webContents.toggleDevTools();
+                    }
+                }
             }
         ];
         
-        // Add developer tools in development or if explicitly enabled
+        // Add developer mode toggle only in development
         if (this.isDevelopment) {
             viewMenuItems.push(
-                // Separator
-                { type: 'separator' },
-                
-                // Toggle Developer Tools
+                // Developer Mode Toggle
                 {
-                    label: 'Toggle Developer Tools',
-                    accelerator: this.accelerators.toggleDevTools,
+                    label: 'Developer Mode',
+                    type: 'checkbox',
+                    checked: this.isDevelopment,
                     click: (item, focusedWindow) => {
-                        // Toggle DevTools for focused window
-                        if (focusedWindow) {
-                            focusedWindow.webContents.toggleDevTools();
-                        }
+                        // Toggle developer mode
+                        this.isDevelopment = item.checked;
+                        console.log(`[MenuBuilder] Developer mode: ${this.isDevelopment}`);
+                        
+                        // Notify all windows about developer mode change
+                        const { BrowserWindow } = require('electron');
+                        BrowserWindow.getAllWindows().forEach(window => {
+                            window.webContents.send('developer-mode-changed', this.isDevelopment);
+                        });
                     }
                 }
             );
@@ -1203,6 +1221,123 @@ class MenuBuilder {
                 console.log('[MenuBuilder] Memory test complete');
             }
         }, 100);
+    }
+    
+    /**
+     * Handles trading settings
+     */
+    handleTradingSettings() {
+        console.log('[MenuBuilder] Opening trading settings');
+        
+        // Send message to focused window
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        if (focusedWindow) {
+            focusedWindow.webContents.send('menu:trading-settings');
+        }
+    }
+    
+    /**
+     * Handles add symbol
+     */
+    handleAddSymbol() {
+        console.log('[MenuBuilder] Adding symbol');
+        
+        // Send to focused window
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        if (focusedWindow) {
+            focusedWindow.webContents.send('menu:add-symbol');
+        }
+    }
+    
+    /**
+     * Handles remove symbol
+     */
+    handleRemoveSymbol() {
+        console.log('[MenuBuilder] Removing symbol');
+        
+        // Send to focused window
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        if (focusedWindow) {
+            focusedWindow.webContents.send('menu:remove-symbol');
+        }
+    }
+    
+    /**
+     * Handles import symbols
+     */
+    async handleImportSymbols() {
+        console.log('[MenuBuilder] Importing symbols');
+        
+        // Show file dialog
+        const result = await dialog.showOpenDialog({
+            title: 'Import Symbol List',
+            filters: [
+                { name: 'CSV Files', extensions: ['csv'] },
+                { name: 'Text Files', extensions: ['txt'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['openFile']
+        });
+        
+        if (!result.canceled && result.filePaths.length > 0) {
+            // Send to focused window
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow) {
+                focusedWindow.webContents.send('menu:import-symbols', result.filePaths[0]);
+            }
+        }
+    }
+    
+    /**
+     * Handles export symbols
+     */
+    async handleExportSymbols() {
+        console.log('[MenuBuilder] Exporting symbols');
+        
+        // Show save dialog
+        const result = await dialog.showSaveDialog({
+            title: 'Export Symbol List',
+            defaultPath: 'symbols.csv',
+            filters: [
+                { name: 'CSV Files', extensions: ['csv'] },
+                { name: 'Text Files', extensions: ['txt'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+        
+        if (!result.canceled) {
+            // Send to focused window
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow) {
+                focusedWindow.webContents.send('menu:export-symbols', result.filePath);
+            }
+        }
+    }
+    
+    /**
+     * Handles cache stats
+     */
+    handleCacheStats() {
+        console.log('[MenuBuilder] Showing cache statistics');
+        
+        // Send to focused window
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        if (focusedWindow) {
+            focusedWindow.webContents.send('menu:cache-stats');
+        }
+    }
+    
+    /**
+     * Handles data settings
+     */
+    handleDataSettings() {
+        console.log('[MenuBuilder] Opening data settings');
+        
+        // Send to focused window
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        if (focusedWindow) {
+            focusedWindow.webContents.send('menu:data-settings');
+        }
     }
     
     /**

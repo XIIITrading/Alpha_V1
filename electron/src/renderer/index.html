@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    
+    <!-- Viewport for proper rendering -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Content Security Policy - Prevents XSS attacks -->
+    <!-- We allow 'unsafe-inline' and 'unsafe-eval' for Perspective's requirements -->
+    
+     
+    <meta http-equiv="Content-Security-Policy" 
+    content="default-src 'self'; 
+    script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+    style-src 'self' 'unsafe-inline';
+    connect-src 'self';
+    img-src 'self' data:;
+    font-src 'self' data:;">
+    
+    <title>Alpha V1 Trading Tool</title>
+    
+    <!-- Base styles for the application -->
+    <style>
+        /* CSS Reset - Ensures consistent styling across platforms */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Make the app fill the entire window */
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars on the main window */
+        }
+        
+        /* Dark theme base - Trading apps typically use dark themes */
+        body {
+            background-color: #0d0d0d;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px; /* Slightly smaller for more data density */
+            line-height: 1.4;
+            
+            /* Disable text selection by default (can be enabled on specific elements) */
+            user-select: none;
+            -webkit-user-select: none;
+            
+            /* Smooth font rendering on macOS */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Main application container */
+        #app {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Loading screen - Shown while Perspective initializes */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0d0d0d;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: #00ff00; /* Green accent for trading theme */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Loading text */
+        .loading-text {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtext {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        /* Error state - Shown if initialization fails */
+        #error {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0d0d0d;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            color: #ff3333;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            color: #e0e0e0;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .error-details {
+            color: #888;
+            font-size: 13px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border-radius: 4px;
+            user-select: text; /* Allow copying error messages */
+            -webkit-user-select: text;
+        }
+        
+        /* Retry button */
+        .retry-button {
+            padding: 8px 16px;
+            background-color: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .retry-button:hover {
+            background-color: #00cc00;
+        }
+        
+        /* Header bar - Contains window controls and status */
+        #header {
+            height: 32px;
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            flex-shrink: 0; /* Prevent shrinking */
+            
+            /* Make the header draggable on macOS/Windows */
+            -webkit-app-region: drag;
+        }
+        
+        /* Make buttons in header non-draggable */
+        #header button,
+        #header select,
+        #header input {
+            -webkit-app-region: no-drag;
+        }
+        
+        /* Status indicators */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            font-size: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background-color: #666;
+        }
+        
+        .status-dot.connected {
+            background-color: #00ff00;
+            box-shadow: 0 0 4px #00ff00;
+        }
+        
+        .status-dot.connecting {
+            background-color: #ffaa00;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-dot.error {
+            background-color: #ff3333;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Main content area - Where Perspective tables will be rendered */
+        #content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Perspective viewer container */
+        #perspective-viewer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Tab container for multiple tables */
+        .tab-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tab-header {
+            height: 32px;
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            flex-shrink: 0;
+        }
+        
+        .tab {
+            padding: 6px 16px;
+            background-color: transparent;
+            color: #888;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            margin-right: 4px;
+        }
+        
+        .tab:hover {
+            color: #e0e0e0;
+            background-color: #262626;
+        }
+        
+        .tab.active {
+            color: #00ff00;
+            border-bottom-color: #00ff00;
+            background-color: #262626;
+        }
+        
+        .tab-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Footer - Shows performance metrics and stats */
+        #footer {
+            height: 24px;
+            background-color: #1a1a1a;
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 11px;
+            color: #888;
+            flex-shrink: 0;
+        }
+        
+        .footer-item {
+            margin-right: 20px;
+        }
+        
+        .footer-value {
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        /* Platform-specific styles */
+        
+        /* macOS specific */
+        body.platform-darwin #header {
+            padding-left: 80px; /* Space for traffic lights */
+        }
+        
+        /* Windows specific */
+        body.platform-win32 {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+        
+        /* Linux specific */
+        body.platform-linux {
+            font-family: 'Ubuntu', 'Roboto', sans-serif;
+        }
+        
+        /* Utility classes */
+        .hidden {
+            display: none !important;
+        }
+        
+        .flex-spacer {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing Alpha V1 Trading Tool</div>
+        <div class="loading-subtext">Loading Perspective engine...</div>
+    </div>
+    
+    <!-- Error screen -->
+    <div id="error">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message">Failed to initialize application</div>
+        <div class="error-details" id="error-details"></div>
+        <button class="retry-button" onclick="window.location.reload()">Retry</button>
+    </div>
+    
+    <!-- Main application -->
+    <div id="app" class="hidden">
+        <!-- Header bar -->
+        <div id="header">
+            <div class="status-indicator">
+                <div class="status-dot" id="connection-status"></div>
+                <span id="connection-text">Disconnected</span>
+            </div>
+            
+            <div class="status-indicator">
+                <span>Market: </span>
+                <span class="footer-value" id="market-status">Closed</span>
+            </div>
+            
+            <div class="flex-spacer"></div>
+            
+            <!-- Window controls will be added here by JavaScript -->
+            <div id="window-controls"></div>
+        </div>
+        
+        <!-- Main content area -->
+        <div id="content">
+            <div class="tab-container">
+                <div class="tab-header" id="tab-header">
+                    <!-- Tabs will be dynamically added here -->
+                </div>
+                <div class="tab-content" id="tab-content">
+                    <!-- Perspective viewers will be added here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer bar -->
+        <div id="footer">
+            <div class="footer-item">
+                <span>FPS: </span>
+                <span class="footer-value" id="fps">0</span>
+            </div>
+            
+            <div class="footer-item">
+                <span>Memory: </span>
+                <span class="footer-value" id="memory">0 MB</span>
+            </div>
+            
+            <div class="footer-item">
+                <span>Updates/s: </span>
+                <span class="footer-value" id="updates-per-sec">0</span>
+            </div>
+            
+            <div class="footer-item">
+                <span>Latency: </span>
+                <span class="footer-value" id="latency">0ms</span>
+            </div>
+            
+            <div class="flex-spacer"></div>
+            
+            <div class="footer-item">
+                <span id="current-time">00:00:00</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load the renderer JavaScript -->
+    <script type="module" src="index.js"></script>
+</body>
+</html>

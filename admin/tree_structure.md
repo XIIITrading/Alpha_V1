@@ -1,5 +1,5 @@
 # Project Structure
-Last updated: 2025-06-22 10:47:49
+Last updated: 2025-06-22 12:03:44
 
 ```
 Alpha_V1/
@@ -7,7 +7,6 @@ Alpha_V1/
 │   ├── README.md # Project documentation
 │   ├── git_commit_push.py
 │   ├── git_latest_pull_replace.py
-│   ├── package-lock.json
 │   ├── start_server.bat
 │   ├── admin/
 │   │   ├── tree_structure.md
@@ -15,10 +14,12 @@ Alpha_V1/
 │   ├── electron/
 │   │   ├── README.md # Project documentation
 │   │   ├── main.js
-│   │   ├── package-lock.json
 │   │   ├── package.json
-│   │   ├── test-main.js
-│   │   ├── test-statemanager.js
+│   │   ├── preload.js
+│   │   ├── config/
+│   │   │   ├── app.config.js
+│   │   │   ├── shortcuts.config.js
+│   │   │   ├── window.config.js
 │   │   ├── src/
 │   │   │   ├── main/
 │   │   │   │   ├── AppUpdater.js
@@ -26,8 +27,10 @@ Alpha_V1/
 │   │   │   │   ├── MenuBuilder.js
 │   │   │   │   ├── StateManager.js
 │   │   │   │   ├── WindowManager.js
-│   │   ├── test-files/
-│   │   │   ├── test.html
+│   │   │   ├── renderer/
+│   │   │   │   ├── bridge.js
+│   │   │   │   ├── index.html
+│   │   │   │   ├── index.js
 │   ├── perspective/
 │   ├── polygon/
 │   │   ├── README.md # Project documentation

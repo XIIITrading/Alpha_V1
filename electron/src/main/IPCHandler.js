@@ -115,6 +115,24 @@ class IPCHandler extends EventEmitter {
                 uptime: process.uptime()                // Process uptime in seconds
             };
         });
+
+        // Add this handler for app:get-info
+        this.registerHandler('app:get-info', async (event) => {
+            return {
+                version: app.getVersion(),
+                environment: process.env.NODE_ENV || 'production',
+                platform: process.platform,
+                arch: process.arch
+            };
+        });
+
+        // Add this handler for dev:get-metrics  
+        this.registerHandler('dev:get-metrics', async (event) => {
+            const memoryInfo = process.getProcessMemoryInfo();
+            return {
+                memory: Math.round(memoryInfo.private / 1024) // MB
+            };
+        });
     }
     
     /**

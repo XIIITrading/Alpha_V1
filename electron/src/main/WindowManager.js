@@ -141,7 +141,7 @@ class WindowManager extends EventEmitter {
     async loadWindowContent(window, windowType, typeConfig) {
         // Determine the HTML file to load
         const htmlFile = typeConfig.html || 'index.html';
-        const htmlPath = path.join(__dirname, '../../renderer', htmlFile);
+        const htmlPath = path.join(__dirname, '../renderer', htmlFile);
         
         // Load the HTML file
         await window.loadFile(htmlPath);
