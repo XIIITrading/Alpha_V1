@@ -1,0 +1,15 @@
+polygon/
+├── __init__.py           # Clean public API interface
+├── core.py              # Main PolygonClient class with API interaction
+├── fetcher.py           # High-level data fetching logic
+├── storage.py           # Local caching and parquet file management
+├── validators.py        # Data validation and quality checks
+├── utils.py             # Helper functions (timeframe conversion, etc.)
+├── rate_limiter.py      # API rate limiting management
+├── config.py            # Configuration, constants, and settings
+├── exceptions.py        # Custom exceptions for polygon module
+├── debug.py             # Testing utilities and debug tools
+├── README.md            # Module documentation
+└── data/                # Local data storage directory
+    ├── cache/           # SQLite cache for metadata
+    └── parquet/         # Parquet files for OHLCV data

@@ -1,0 +1,36 @@
+Loads environment variables from your root .env file (one level up from the polygon folder)
+Provides centralized configuration for:
+
+API settings (endpoints, keys, timeouts)
+Storage paths and caching settings
+Rate limiting based on Polygon subscription tiers
+Market hours and timezone configuration
+Logging setup with file rotation
+
+
+Key features:
+
+Singleton pattern with get_config() for easy access throughout the module
+Configuration override capability for testing
+Automatic directory creation for data storage
+Comprehensive logging setup
+Export configuration to JSON for debugging
+
+
+Market timezone is now pytz.UTC to match Polygon's API
+Market hours are converted to UTC times:
+
+Pre-market: 9:00 AM UTC (4:00 AM ET)
+Regular start: 2:30 PM UTC (9:30 AM ET)
+Regular end: 9:00 PM UTC (4:00 PM ET)
+Post-market end: 1:00 AM UTC (8:00 PM ET)
+
+
+Added DST handling with separate summer hours (when US markets are UTC-4 instead of UTC-5)
+Added timestamp configuration:
+
+use_utc_timestamps = True
+timestamp_unit = 'ms' (Polygon uses milliseconds)
+
+
+Module constant POLYGON_TIMEZONE = pytz.UTC at the top

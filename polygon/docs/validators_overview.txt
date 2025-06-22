@@ -1,0 +1,69 @@
+Key Components:
+1. DataQualityReport Class
+
+Structured container for validation results
+Tracks issues, warnings, metrics, and suggestions
+Provides overall validity status
+
+2. Symbol Validation
+
+validate_symbol_detailed() - Classify symbol types (equity, preferred, warrant, etc.)
+Detect special characteristics and unusual formats
+
+3. Data Integrity Validation
+
+validate_ohlcv_integrity() - Comprehensive OHLCV checks:
+
+Required columns, NaN values, negative prices
+OHLC relationship validation (high >= low, etc.)
+Duplicate timestamps, volume validation
+
+
+
+4. Gap Detection
+
+detect_gaps() - Find missing bars in time series
+Accounts for market closures and weekends
+Returns gap locations and missing bar counts
+
+5. Anomaly Detection
+
+detect_price_anomalies() - Statistical outlier detection:
+
+Extreme price changes (configurable threshold)
+Z-score based outliers
+Volume spikes
+Abnormal bid-ask spreads
+
+
+
+6. Continuity Validation
+
+validate_data_continuity() - Check completeness for date ranges
+Calculate coverage percentage
+Identify missing dates
+
+7. Volume Analysis
+
+validate_volume_profile() - Analyze volume patterns:
+
+Distribution statistics and percentiles
+Day-of-week and hourly patterns
+Consistency metrics
+Anomaly detection
+
+
+
+8. Market Hours Validation
+
+validate_market_hours_data() - Categorize bars by trading session
+Flag weekend and overnight data
+Provide session breakdown statistics
+
+9. Comprehensive Summary
+
+generate_validation_summary() - Run all validations and create report
+Calculate overall quality score
+Provide actionable recommendations
+
+All functions provide detailed metrics and actionable insights for data quality assessment.

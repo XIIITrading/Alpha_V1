@@ -1,0 +1,37 @@
+Pre-Workflow Synopsis
+Module to Build: polygon - Data Pipeline Module
+Specific Requirements:
+
+Create a self-contained module for Polygon.io API integration
+Incorporate functionality from existing polygon_service.py
+Follow the standardized module structure from your guide
+Provide clean interface for other modules to import
+Support both async and sync operations
+Handle market data fetching, validation, and storage
+
+Dependencies:
+
+polygon-api-client (or continue using requests/aiohttp)
+pandas
+numpy
+python-dotenv
+pytz
+aiohttp
+Storage: sqlite3 for metadata, parquet files for OHLCV data
+
+Approach:
+
+Analyze existing polygon_service.py to extract core functionality
+Reorganize into modular structure with internal components
+Create clean public API through __init__.py
+Add debug tools for testing connectivity and data validation
+Implement local caching/storage layer
+Ensure backward compatibility while improving architecture
+
+Key Improvements to Make:
+
+Add local data caching to reduce API calls
+Implement rate limiting handling
+Create data validation utilities
+Add batch fetching capabilities
+Provide standardized error handling

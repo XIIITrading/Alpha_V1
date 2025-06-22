@@ -1,0 +1,71 @@
+Key Components:
+1. RateLimitStats Class
+
+Tracks comprehensive statistics
+Request counts, response times, success rates
+Persistent storage across restarts
+
+2. RateLimiter Class - Main rate limiting engine
+Core features:
+
+Dual tracking: Per-minute and daily limits
+Automatic waiting: Blocks when limits approached
+Priority queuing: High-priority requests get preference
+Background processing: Queue processor thread
+Statistics tracking: Response times, wait times, success rates
+
+Key Methods:
+Rate Limit Management:
+
+check_limit() - Check if request allowed
+wait_if_needed() - Smart waiting with priority
+record_request() - Track completed requests
+get_current_usage() - Real-time usage stats
+
+Advanced Features:
+
+queue_request() - Queue for background execution
+estimate_time_for_requests() - Time estimation for bulk operations
+get_cost_estimate() - API cost calculation by tier
+
+3. AsyncRateLimiter Class
+
+Async/await compatible version
+Shares state with sync limiter
+Same features with async interface
+
+Key Features:
+
+Intelligent Throttling:
+
+Sliding window for per-minute tracking
+Daily counter with automatic reset
+Configurable buffer (90% by default)
+
+
+Priority System:
+
+1-10 priority scale
+High-priority requests get shorter waits
+Automatic retry with decreasing priority
+
+
+Queue Management:
+
+Background thread processes queued requests
+Automatic retry on failure (up to 3 attempts)
+Priority-based execution order
+
+
+Cost Optimization:
+
+Estimates API costs by tier
+Suggests optimal request strategies
+Tracks usage efficiency
+
+
+Persistence:
+
+Saves statistics to disk
+Maintains counts across restarts
+Detailed usage analytics

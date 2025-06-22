@@ -1,0 +1,38 @@
+Key Function Categories:
+1. Timeframe Operations
+
+parse_timeframe() - Convert user-friendly strings ('5min', '1h') to Polygon format
+calculate_bars_in_range() - Estimate number of bars for a date range
+resample_ohlcv() - Resample data to different timeframes
+
+2. Date/Time Handling (All UTC-based)
+
+parse_date() - Parse various date formats to UTC datetime
+format_date_for_api() - Format dates for Polygon API (YYYY-MM-DD)
+timestamp_to_datetime() - Convert Unix timestamps to UTC datetime
+datetime_to_timestamp() - Convert datetime to Unix timestamp
+validate_date_range() - Validate and enforce date range constraints
+
+3. Market Hours
+
+is_market_open() - Check if US markets are open
+is_extended_hours() - Check for pre/post market hours
+
+4. Data Validation
+
+validate_symbol() - Validate and normalize ticker symbols
+normalize_ohlcv_data() - Convert API response to clean DataFrame
+validate_ohlcv_data() - Check for data quality issues
+
+5. Helper Functions
+
+split_large_date_range() - Break large date ranges into chunks
+dataframe_to_dict() - Convert DataFrames with proper datetime formatting
+estimate_data_size() - Estimate storage and API calls for requests
+
+All functions:
+
+Work exclusively in UTC to avoid timezone issues
+Include comprehensive error handling
+Have detailed documentation with examples
+Return data in consistent formats

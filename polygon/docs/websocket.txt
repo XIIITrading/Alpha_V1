@@ -1,0 +1,44 @@
+Connection Management
+
+Connects to Polygon's WebSocket endpoint
+Handles authentication with API key
+Automatic reconnection with exponential backoff
+
+
+Subscription System
+
+Subscribe to multiple symbols and channels (Trades, Quotes, Aggregates)
+Manage callbacks for data routing
+Track subscriptions for reconnection
+
+
+Data Processing
+
+Processes trades, quotes, and aggregate bars
+Normalizes data into consistent format
+Routes to registered callbacks
+
+
+Error Handling
+
+Connection failures with retry logic
+Authentication errors
+Message parsing errors
+Graceful degradation
+
+
+Additional Features
+
+Status tracking and metrics
+Async context manager support
+Optional storage integration
+Comprehensive logging
+
+
+
+Next Steps - Please Choose:
+Option 1: Test the WebSocket Client
+
+Create a test script to verify connection
+Test with your API key
+Verify data reception

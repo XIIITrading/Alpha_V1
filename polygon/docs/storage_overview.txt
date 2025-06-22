@@ -1,0 +1,57 @@
+Key Components:
+1. CacheMetadata Class
+
+Container for cache metadata information
+Tracks symbol, timeframe, date ranges, file info, and checksums
+
+2. StorageManager Class - Main storage handler
+Core features:
+
+SQLite Database for metadata tracking
+Parquet Files for efficient OHLCV data storage
+Thread-safe database operations
+Smart data merging when updating existing caches
+Automatic file organization by symbol
+
+Key Methods:
+Data Operations:
+
+save_data() - Save OHLCV data with automatic merging
+load_data() - Load cached data with date filtering
+has_cache() - Check if data exists for date range
+get_missing_ranges() - Identify gaps in cached data
+
+Cache Management:
+
+clear_cache() - Remove data by symbol/timeframe/age
+optimize_cache() - Remove duplicates and recompress
+get_cache_statistics() - Usage analytics and metrics
+
+Storage Features:
+
+Efficient Storage:
+
+Parquet format with Snappy compression
+Automatic deduplication
+Smart merging of overlapping data
+
+
+Data Integrity:
+
+MD5 checksums for validation
+Metadata tracking in SQLite
+Access logging for analytics
+
+
+Performance:
+
+Thread-safe operations
+Lazy loading with date filtering
+Organized directory structure
+
+
+Maintenance:
+
+Cleanup old data
+Optimization routines
+Usage statistics

@@ -1,0 +1,25 @@
+Key Exception Classes:
+
+PolygonError - Base exception with timestamp and details dictionary
+PolygonAPIError - HTTP API errors with status codes
+PolygonAuthenticationError - Invalid/missing API key (401)
+PolygonRateLimitError - Rate limit exceeded with retry info (429)
+PolygonSymbolError - Invalid ticker with suggestions
+PolygonDataError - Data validation failures
+PolygonTimeRangeError - Invalid date ranges
+PolygonStorageError - Cache/file system errors
+PolygonConfigurationError - Setup issues
+PolygonNetworkError - Connection problems
+PolygonWebSocketError - Real-time stream errors
+
+Utility Functions:
+
+is_retryable_error() - Determines if an error should trigger a retry
+get_retry_delay() - Calculates exponential backoff with jitter
+
+Each exception:
+
+Includes detailed context in a details dictionary
+Has specific attributes for common error scenarios
+Provides clear error messages
+Includes UTC timestamps

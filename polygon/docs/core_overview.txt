@@ -1,0 +1,29 @@
+Key Components:
+1. PolygonSession - Low-level HTTP handler
+
+Manages both sync and async HTTP sessions
+Implements rate limiting (tracks per-minute and daily limits)
+Automatic retry with exponential backoff
+Comprehensive error handling and response parsing
+Context manager support for proper cleanup
+
+2. PolygonClient - High-level API client
+
+Endpoint-specific methods:
+
+get_aggregates() - Fetch OHLCV data
+get_ticker_details() - Get ticker information
+get_market_status() - Check if market is open
+search_tickers() - Search for symbols
+validate_ticker() - Verify symbol exists
+
+
+Response validation and normalization
+
+Key Features:
+
+Rate Limiting: Automatically tracks and enforces rate limits
+Retry Logic: Smart retries for transient failures
+Error Mapping: Specific exceptions for different error types
+Session Reuse: Efficient connection pooling
+Both Sync/Async: Support for both programming paradigms

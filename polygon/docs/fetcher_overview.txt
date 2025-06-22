@@ -1,0 +1,62 @@
+Key Components:
+1. DataFetcher Class - Main fetching orchestrator
+Core features:
+
+Smart caching: Checks cache first, fetches only missing data
+Rate limit aware: Automatically waits when needed
+Data validation: Cleans and validates all data
+Progress tracking: Callbacks for long operations
+Batch operations: Fetch multiple symbols efficiently
+
+Key Methods:
+Single Symbol Operations:
+
+fetch_data() - Main method with caching, validation, gap filling
+fetch_latest_bars() - Get recent data quickly
+update_cache() - Bring cached data up to date
+get_data_summary() - Check data availability without fetching
+
+Multi-Symbol Operations:
+
+fetch_multiple_symbols() - Parallel fetching with thread pool
+validate_dataset() - Comprehensive data validation
+
+2. BatchDataFetcher Class - Specialized for bulk operations
+
+fetch_universe() - Create aligned multi-symbol datasets
+create_rolling_dataset() - Maintain rolling window of data
+
+Key Features:
+
+Intelligent Caching:
+
+Detects partial cache hits
+Fetches only missing date ranges
+Merges cached and new data seamlessly
+
+
+Large Date Range Handling:
+
+Automatically splits large requests
+Respects API limits per request
+Progress tracking for long operations
+
+
+Data Quality:
+
+Automatic validation and cleaning
+Optional gap filling for small gaps
+Removes duplicates and invalid data
+
+
+Performance Optimizations:
+
+Parallel fetching for multiple symbols
+Efficient cache usage
+Smart date range calculations
+
+
+Convenience Functions:
+
+fetch_data() - Simple one-liner for basic needs
+fetch_latest() - Quick access to recent bars
