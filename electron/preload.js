@@ -18,6 +18,15 @@ const { contextBridge, ipcRenderer } = require('electron');
  */
 contextBridge.exposeInMainWorld('electronAPI', {
     
+    // ============= Generic Invoke Method =============
+    /**
+     * Generic invoke method for IPC calls
+     * Useful for calling handlers not explicitly defined below
+     */
+    invoke: (channel, ...args) => {
+        return ipcRenderer.invoke(channel, ...args);
+    },
+    
     // ============= Window Management =============
     window: {
         /**
@@ -114,35 +123,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     data: {
         /**
          * Request data from integration layer
-         * @param {string} source - Data source ('polygon', etc.)
-         * @param {object} params - Request parameters
+         * @param {object} params - Full request parameters including source
          * @returns {Promise<*>} - Requested data
          */
-        request: (source, params) => {
-            return ipcRenderer.invoke('data:request', { source, params });
+        request: (params) => {
+            return ipcRenderer.invoke('data:request', params);
         },
 
         /**
          * Subscribe to real-time data stream
-         * @param {string} stream - Stream type ('trades', 'quotes', etc.)
-         * @param {string[]} symbols - Symbols to subscribe to
-         * @param {object} options - Stream-specific options
+         * @param {object} params - Full subscription parameters
          * @returns {Promise<object>} - Subscription info with ID
          */
-        subscribe: (stream, symbols, options = {}) => {
-            return ipcRenderer.invoke('data:subscribe', { 
-                stream, 
-                symbols, 
-                options 
-            });
+        subscribe: (params) => {
+            return ipcRenderer.invoke('data:subscribe', params);
         },
 
         /**
          * Unsubscribe from data stream
-         * @param {string} subscriptionId - ID returned from subscribe
+         * @param {object} params - Unsubscribe parameters with subscriptionId
          */
-        unsubscribe: (subscriptionId) => {
-            return ipcRenderer.invoke('data:unsubscribe', { subscriptionId });
+        unsubscribe: (params) => {
+            return ipcRenderer.invoke('data:unsubscribe', params);
         },
 
         /**
@@ -156,6 +158,46 @@ contextBridge.exposeInMainWorld('electronAPI', {
             return () => {
                 ipcRenderer.removeListener('data:update', subscription);
             };
+        }
+    },
+
+    // ============= Market Data Operations =============
+    market: {
+        /**
+         * Listen for real-time market data
+         * @param {function} callback - Called with market data
+         * @returns {function} - Call to remove listener
+         */
+        onData: (callback) => {
+            const subscription = (event, data) => callback(data);
+            ipcRenderer.on('market-data', subscription);
+            return () => {
+                ipcRenderer.removeListener('market-data', subscription);
+            };
+        },
+
+        /**
+         * Listen for connection errors
+         * @param {function} callback - Called with error info
+         * @returns {function} - Call to remove listener
+         */
+        onConnectionError: (callback) => {
+            const subscription = (event, error) => callback(error);
+            ipcRenderer.on('connection-error', subscription);
+            return () => {
+                ipcRenderer.removeListener('connection-error', subscription);
+            };
+        }
+    },
+
+    // ============= Bridge Operations =============
+    bridge: {
+        /**
+         * Get PolygonBridge status
+         * @returns {Promise<object>} - Bridge connection status
+         */
+        getStatus: () => {
+            return ipcRenderer.invoke('bridge:get-status');
         }
     },
 
@@ -187,6 +229,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
         },
 
         /**
+         * Update a Perspective table (with invoke for confirmation)
+         * @param {string} tableName - Target table name
+         * @param {object} data - Data to update
+         * @param {object} options - Update options
+         */
+        updateTable: (tableName, data, options = {}) => {
+            return ipcRenderer.invoke('perspective:update-table', { 
+                tableName, 
+                data, 
+                options 
+            });
+        },
+
+        /**
+         * Clear a Perspective table
+         * @param {string} tableName - Table to clear
+         */
+        clearTable: (tableName) => {
+            return ipcRenderer.invoke('perspective:clear-table', { tableName });
+        },
+
+        /**
+         * Get table schema
+         * @param {string} tableName - Table name
+         * @returns {Promise<object>} - Table schema
+         */
+        getSchema: (tableName) => {
+            return ipcRenderer.invoke('perspective:get-schema', { tableName });
+        },
+
+        /**
          * Get table metadata
          * @param {string} tableName - Table name
          * @returns {Promise<object>} - Table info (schema, size, etc.)
@@ -204,6 +277,50 @@ contextBridge.exposeInMainWorld('electronAPI', {
          */
         getInfo: () => {
             return ipcRenderer.invoke('app:get-info');
+        },
+
+        /**
+         * Restart the application
+         * @returns {Promise<object>} - Success status
+         */
+        restart: () => {
+            return ipcRenderer.invoke('app:restart');
+        },
+
+        /**
+         * Quit the application
+         * @returns {Promise<object>} - Success status
+         */
+        quit: () => {
+            return ipcRenderer.invoke('app:quit');
+        },
+
+        /**
+         * Open external URL in default browser
+         * @param {string} url - URL to open
+         * @returns {Promise<object>} - Success status
+         */
+        openExternal: (url) => {
+            return ipcRenderer.invoke('app:open-external', { url });
+        },
+
+        /**
+         * Show item in file explorer/finder
+         * @param {string} path - Path to show
+         * @returns {Promise<object>} - Success status
+         */
+        showItemInFolder: (path) => {
+            return ipcRenderer.invoke('app:show-item-in-folder', { path });
+        },
+
+        /**
+         * Show error dialog
+         * @param {string} title - Dialog title
+         * @param {string} content - Error message
+         * @returns {Promise<object>} - Success status
+         */
+        showError: (title, content) => {
+            return ipcRenderer.invoke('app:show-error', { title, content });
         },
 
         /**
@@ -230,6 +347,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
     },
 
+    // ============= System Operations =============
+    system: {
+        /**
+         * Get system version information
+         * @returns {Promise<object>} - Version info
+         */
+        getVersion: () => {
+            return ipcRenderer.invoke('system:get-version');
+        },
+
+        /**
+         * Get system paths
+         * @returns {Promise<object>} - System paths
+         */
+        getPaths: () => {
+            return ipcRenderer.invoke('system:get-paths');
+        },
+
+        /**
+         * Get system metrics
+         * @returns {Promise<object>} - CPU, memory, etc.
+         */
+        getMetrics: () => {
+            return ipcRenderer.invoke('system:get-metrics');
+        }
+    },
+
     // ============= Development Tools =============
     dev: {
         /**
@@ -249,6 +393,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getMetrics: () => {
             return ipcRenderer.invoke('dev:get-metrics');
         }
+    },
+
+    // ============= Event Listeners =============
+    /**
+     * Listen for events from main process
+     * @param {string} channel - Channel to listen on
+     * @param {function} callback - Event handler
+     * @returns {function} - Call to remove listener
+     */
+    on: (channel, callback) => {
+        const subscription = (event, ...args) => callback(...args);
+        ipcRenderer.on(channel, subscription);
+        return () => {
+            ipcRenderer.removeListener(channel, subscription);
+        };
+    },
+
+    /**
+     * One-time event listener
+     * @param {string} channel - Channel to listen on
+     * @param {function} callback - Event handler
+     */
+    once: (channel, callback) => {
+        ipcRenderer.once(channel, (event, ...args) => callback(...args));
+    },
+
+    /**
+     * Remove all listeners for a channel
+     * @param {string} channel - Channel to clear
+     */
+    removeAllListeners: (channel) => {
+        ipcRenderer.removeAllListeners(channel);
     }
 });
 

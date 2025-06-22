@@ -1,5 +1,5 @@
 # Project Structure
-Last updated: 2025-06-22 12:03:44
+Last updated: 2025-06-22 14:29:37
 
 ```
 Alpha_V1/
@@ -13,9 +13,12 @@ Alpha_V1/
 │   │   ├── update_tree.py
 │   ├── electron/
 │   │   ├── README.md # Project documentation
+│   │   ├── create-symlink.bat
 │   │   ├── main.js
+│   │   ├── package-lock.json
 │   │   ├── package.json
 │   │   ├── preload.js
+│   │   ├── test-window-config.js
 │   │   ├── config/
 │   │   │   ├── app.config.js
 │   │   │   ├── shortcuts.config.js

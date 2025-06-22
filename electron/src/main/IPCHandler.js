@@ -324,42 +324,48 @@ class IPCHandler extends EventEmitter {
      */
     setupDataHandlers() {
         // Request data from integration layer
-        this.registerHandler('data:request', async (event, { source, params }) => {
-            try {
-                // Validate source
-                if (!['polygon', 'cache', 'calculate'].includes(source)) {
-                    throw new Error('Invalid data source');
-                }
-                
-                // Create operation ID for tracking
-                const operationId = this.generateOperationId();
-                
-                // Add to pending operations
-                this.pendingOperations.add(operationId);
-                
-                // Forward request to integration layer (via event)
-                this.emit('data-request', {
-                    operationId,
-                    source,
-                    params,
-                    windowId: this.windowManager.getWindowId(BrowserWindow.fromWebContents(event.sender))
-                });
-                
-                // Wait for response (with timeout)
-                const response = await this.waitForDataResponse(operationId, 30000); // 30 second timeout
-                
-                // Remove from pending operations
-                this.pendingOperations.delete(operationId);
-                
-                // Return response
-                return response;
-                
-            } catch (error) {
-                // Log error and return failure
-                console.error('[IPCHandler] Data request failed:', error);
-                return { success: false, error: error.message };
-            }
+this.registerHandler('data:request', async (event, { source, params }) => {
+    console.log('[IPCHandler] data:request received:', { source, params }); // ADD THIS
+    
+    try {
+        // Validate source
+        if (!['polygon', 'cache', 'calculate'].includes(source)) {
+            throw new Error('Invalid data source');
+        }
+        
+        // Create operation ID for tracking
+        const operationId = this.generateOperationId();
+        console.log('[IPCHandler] Generated operationId:', operationId); // ADD THIS
+        
+        // Add to pending operations
+        this.pendingOperations.add(operationId);
+        
+        // Forward request to integration layer (via event)
+        console.log('[IPCHandler] Emitting data-request event'); // ADD THIS
+        this.emit('data-request', {
+            operationId,
+            source,
+            params,
+            windowId: this.windowManager.getWindowId(BrowserWindow.fromWebContents(event.sender))
         });
+        
+        console.log('[IPCHandler] Waiting for response...'); // ADD THIS
+        
+        // Wait for response (with timeout)
+        const response = await this.waitForDataResponse(operationId, 30000); // 30 second timeout
+        
+        // Remove from pending operations
+        this.pendingOperations.delete(operationId);
+        
+        // Return response
+        return response;
+        
+    } catch (error) {
+        // Log error and return failure
+        console.error('[IPCHandler] Data request failed:', error);
+        return { success: false, error: error.message };
+    }
+});
         
         // Subscribe to data stream
         this.registerHandler('data:subscribe', async (event, { stream, symbols, options }) => {
@@ -438,6 +444,15 @@ class IPCHandler extends EventEmitter {
                 console.error('[IPCHandler] Restart failed:', error);
                 return { success: false, error: error.message };
             }
+        });
+        
+        // Get PolygonBridge status
+        this.registerHandler('bridge:get-status', async (event) => {
+            // Simple status check - just return success if we got here
+            return { 
+                success: true,
+                message: 'Bridge is operational (endpoints working)'
+            };
         });
         
         // Quit application

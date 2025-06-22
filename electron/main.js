@@ -13,6 +13,7 @@ const IPCHandler = require('./src/main/IPCHandler');
 const MenuBuilder = require('./src/main/MenuBuilder');
 const StateManager = require('./src/main/StateManager');
 const AppUpdater = require('./src/main/AppUpdater');
+const PolygonBridge = require('./src/main/PolygonBridge');
 
 // Import configuration files
 const appConfig = require('./config/app.config');
@@ -29,6 +30,7 @@ let windowManager = null;  // Manages all application windows
 let ipcHandler = null;     // Handles all IPC communication
 let stateManager = null;   // Manages persistent application state
 let appUpdater = null;     // Handles auto-updates
+let polygonBridge = null;  // Manages Polygon server connection
 
 // Single instance lock - ensures only one instance of the app runs
 const gotTheLock = app.requestSingleInstanceLock();
@@ -85,7 +87,58 @@ app.whenReady().then(async () => {
             windowManager: windowManager,
             stateManager: stateManager
         });
-        
+
+        // Initialize Polygon Bridge
+        polygonBridge = new PolygonBridge({
+            ipcHandler: ipcHandler,
+            autoStartServer: false, // Never auto-start (assume server is running)
+            serverUrl: 'http://127.0.0.1:8200',
+            wsUrl: 'ws://127.0.0.1:8200'
+        });
+
+        // Set up Polygon Bridge event handlers
+        polygonBridge.on('ready', () => {
+            console.log('[Main] PolygonBridge ready');
+        });
+
+        polygonBridge.on('server-exit', ({ code, signal }) => {
+            console.error(`[Main] Polygon server exited unexpectedly: ${code} ${signal}`);
+        });
+
+        polygonBridge.on('market-data', ({ windowId, subscriptionId, stream, data }) => {
+            const window = windowManager.getWindow(windowId);
+            if (window && !window.isDestroyed()) {
+                window.webContents.send('market-data', {
+                    subscriptionId,
+                    stream,
+                    data
+                });
+            }
+        });
+
+        polygonBridge.on('reconnection-failed', ({ clientId, attempts }) => {
+            console.error(`[Main] WebSocket reconnection failed for ${clientId} after ${attempts} attempts`);
+            const windowId = clientId.replace('window-', '');
+            const window = windowManager.getWindow(windowId);
+            if (window && !window.isDestroyed()) {
+                window.webContents.send('connection-error', {
+                    type: 'websocket',
+                    message: 'Lost connection to market data. Please check your connection.'
+                });
+            }
+        });
+
+// Initialize the bridge
+try {
+    await polygonBridge.initialize();
+    console.log('[Main] PolygonBridge initialized successfully');
+} catch (error) {
+    console.error('[Main] Failed to initialize PolygonBridge:', error);
+    if (!isDevelopment) {
+        dialog.showErrorBox('Connection Error', 
+            'Failed to connect to market data server. Please ensure the server is running.');
+    }
+}
         // Set up application menu
         const menuBuilder = new MenuBuilder({
             windowManager: windowManager,
@@ -171,6 +224,11 @@ app.on('before-quit', async (event) => {
         if (ipcHandler) {
             ipcHandler.cleanup();
         }
+
+        // Shutdown Polygon Bridge
+        if (polygonBridge) {
+            await polygonBridge.shutdown();
+        }
         
         console.log('[Main] Cleanup complete, quitting...');
         
@@ -219,4 +277,4 @@ function setupGlobalShortcuts() {
 }
 
 // Export for testing purposes
-module.exports = { windowManager, ipcHandler, stateManager };
+module.exports = { windowManager, ipcHandler, stateManager, polygonBridge };
