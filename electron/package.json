@@ -1,0 +1,232 @@
+{
+    "name": "@alpha-v1/electron",
+    "version": "1.0.0",
+    "description": "Electron shell for Alpha V1 Trading Tool - High-performance trading interface",
+    "main": "main.js",
+    "private": true,
+    "author": {
+        "name": "Alpha V1 Development Team",
+        "email": "dev@alpha-v1.com"
+    },
+    "license": "UNLICENSED",
+    "homepage": "https://github.com/alpha-v1/trading-tool",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/alpha-v1/trading-tool.git"
+    },
+    "engines": {
+        "node": ">=16.0.0",
+        "npm": ">=8.0.0"
+    },
+    "scripts": {
+        "start": "electron .",
+        "start:dev": "NODE_ENV=development electron .",
+        "start:debug": "NODE_ENV=development electron . --inspect=5858",
+        "test": "npm run test:main",
+        "test:main": "electron test-main.js",
+        "test:main:verbose": "DEBUG=* electron test-main.js",
+        "build": "electron-builder",
+        "build:win": "electron-builder --win",
+        "build:mac": "electron-builder --mac",
+        "build:linux": "electron-builder --linux",
+        "dist": "electron-builder --publish=never",
+        "dist:all": "electron-builder -mwl",
+        "postinstall": "electron-builder install-app-deps",
+        "clean": "rimraf dist out",
+        "rebuild": "electron-rebuild",
+        "lint": "eslint . --ext .js",
+        "lint:fix": "eslint . --ext .js --fix"
+    },
+    "dependencies": {
+        "electron-log": "^5.0.3",
+        "electron-store": "^8.1.0",
+        "electron-updater": "^6.1.7"
+    },
+    "devDependencies": {
+        "electron": "28.1.0",
+        "electron-builder": "^24.9.1",
+        "electron-debug": "^3.2.0",
+        "electron-devtools-installer": "^3.2.0",
+        "electron-rebuild": "^3.2.9",
+        "electron-reload": "^2.0.0-alpha.1",
+        "eslint": "^8.56.0",
+        "rimraf": "^5.0.5"
+    },
+    "build": {
+        "appId": "com.alphav1.trading",
+        "productName": "Alpha V1 Trading Tool",
+        "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+        "copyright": "Copyright © 2025 Alpha V1",
+        "asar": true,
+        "asarUnpack": [
+            "**/*.node",
+            "**/node_modules/sharp/**",
+            "**/node_modules/@finos/perspective/**"
+        ],
+        "directories": {
+            "output": "dist",
+            "buildResources": "build"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "src/**/*",
+            "config/**/*",
+            "assets/**/*",
+            "!**/*.test.js",
+            "!**/test-*",
+            "!**/*.map",
+            "!**/*.ts",
+            "!**/tsconfig.json"
+        ],
+        "extraResources": [
+            {
+                "from": "../perspective/dist",
+                "to": "perspective",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../integration/dist",
+                "to": "integration",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "protocols": [
+            {
+                "name": "Alpha V1 Trading Protocol",
+                "schemes": [
+                    "alpha-v1"
+                ]
+            }
+        ],
+        "publish": [
+            {
+                "provider": "github",
+                "owner": "alpha-v1",
+                "repo": "trading-tool",
+                "releaseType": "release"
+            }
+        ],
+        "mac": {
+            "category": "public.app-category.finance",
+            "icon": "assets/icon.icns",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist",
+            "target": [
+                {
+                    "target": "dmg",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                },
+                {
+                    "target": "zip",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                }
+            ]
+        },
+        "dmg": {
+            "contents": [
+                {
+                    "x": 410,
+                    "y": 150,
+                    "type": "link",
+                    "path": "/Applications"
+                },
+                {
+                    "x": 130,
+                    "y": 150,
+                    "type": "file"
+                }
+            ],
+            "sign": false
+        },
+        "win": {
+            "icon": "assets/icon.ico",
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64",
+                        "ia32"
+                    ]
+                },
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ],
+            "publisherName": "Alpha V1 Development Team",
+            "verifyUpdateCodeSignature": true,
+            "certificateSubjectName": "Alpha V1 Development Team"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "allowElevation": true,
+            "installerIcon": "assets/icon.ico",
+            "uninstallerIcon": "assets/icon.ico",
+            "installerHeaderIcon": "assets/icon.ico",
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "Alpha V1 Trading",
+            "license": "build/license.txt"
+        },
+        "linux": {
+            "icon": "assets/icon.png",
+            "category": "Finance",
+            "target": [
+                {
+                    "target": "AppImage",
+                    "arch": [
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "deb",
+                    "arch": [
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "rpm",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ],
+            "maintainer": "dev@alpha-v1.com",
+            "synopsis": "Professional trading tool with real-time data visualization",
+            "description": "Alpha V1 Trading Tool provides high-performance market data visualization and trading capabilities using Perspective and Electron."
+        },
+        "appImage": {
+            "artifactName": "${productName}-${version}-${arch}.${ext}"
+        },
+        "afterSign": "scripts/notarize.js",
+        "releaseInfo": {
+            "releaseNotes": "See CHANGELOG.md for details"
+        }
+    },
+    "keywords": [
+        "trading",
+        "finance",
+        "market-data",
+        "perspective",
+        "electron",
+        "real-time",
+        "visualization"
+    ]
+}

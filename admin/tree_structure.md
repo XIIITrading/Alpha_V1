@@ -1,16 +1,33 @@
 # Project Structure
-Last updated: 2025-06-22 08:48:43
+Last updated: 2025-06-22 10:47:49
 
 ```
 Alpha_V1/
 │   ├── .env
+│   ├── README.md # Project documentation
 │   ├── git_commit_push.py
 │   ├── git_latest_pull_replace.py
+│   ├── package-lock.json
 │   ├── start_server.bat
 │   ├── admin/
 │   │   ├── tree_structure.md
 │   │   ├── update_tree.py
 │   ├── electron/
+│   │   ├── README.md # Project documentation
+│   │   ├── main.js
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── test-main.js
+│   │   ├── test-statemanager.js
+│   │   ├── src/
+│   │   │   ├── main/
+│   │   │   │   ├── AppUpdater.js
+│   │   │   │   ├── IPCHandler.js
+│   │   │   │   ├── MenuBuilder.js
+│   │   │   │   ├── StateManager.js
+│   │   │   │   ├── WindowManager.js
+│   │   ├── test-files/
+│   │   │   ├── test.html
 │   ├── perspective/
 │   ├── polygon/
 │   │   ├── README.md # Project documentation
