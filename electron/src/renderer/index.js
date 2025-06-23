@@ -489,6 +489,45 @@ async function initialize() {
 }
 
 /**
+ * Handle window resize events
+ */
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    // Debounce resize events
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Resize all grids when window resizes
+        if (window.PerspectiveBridge && window.PerspectiveBridge.gridManager) {
+            window.PerspectiveBridge.gridManager.resizeGrids();
+        }
+    }, 250);
+});
+
+/**
+ * Handle tab visibility changes to resize grids
+ */
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        // Resize grids when tab becomes visible
+        setTimeout(() => {
+            if (window.PerspectiveBridge && window.PerspectiveBridge.gridManager) {
+                window.PerspectiveBridge.gridManager.resizeGrids();
+            }
+        }, 100);
+    }
+});
+
+/**
+ * Start initialization when DOM is ready
+ */
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+} else {
+    // DOM is already ready
+    initialize();
+}
+
+/**
  * Handle keyboard shortcuts
  */
 document.addEventListener('keydown', async (event) => {
@@ -511,16 +550,6 @@ document.addEventListener('keydown', async (event) => {
         electronAPI.app.toggleFullscreen();
     }
 });
-
-/**
- * Start initialization when DOM is ready
- */
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialize);
-} else {
-    // DOM is already ready
-    initialize();
-}
 
 /**
  * Handle window unload

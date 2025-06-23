@@ -7,18 +7,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Content Security Policy - Prevents XSS attacks -->
-    <!-- We allow 'unsafe-inline' and 'unsafe-eval' for Perspective's requirements -->
-    
-     
+    <!-- We allow 'unsafe-inline' and 'unsafe-eval' for AG-Grid's requirements -->
     <meta http-equiv="Content-Security-Policy" 
     content="default-src 'self'; 
-    script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
-    style-src 'self' 'unsafe-inline';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; 
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com;
     connect-src 'self';
     img-src 'self' data:;
     font-src 'self' data:;">
     
     <title>Alpha V1 Trading Tool</title>
+    
+    <!-- AG-Grid CSS - Try local first with embedded fallback -->
+    <link rel="stylesheet" href="../node_modules/ag-grid-community/dist/styles/ag-grid.css">
+    <link rel="stylesheet" href="../node_modules/ag-grid-community/dist/styles/ag-theme-alpine.css">
+    
+    <!-- Fallback: Embed minimal AG-Grid styles if external fails -->
+    <style id="ag-grid-fallback-styles">
+        /* Minimal AG-Grid styles for dark theme if external CSS fails to load */
+        .ag-theme-alpine-dark {
+            --ag-background-color: #181d1f;
+            --ag-foreground-color: #fff;
+            --ag-header-background-color: #222628;
+            --ag-header-foreground-color: #fff;
+            --ag-border-color: #68686e;
+            --ag-row-hover-color: #33373a;
+            --ag-selected-row-background-color: #2a3a4c;
+        }
+        .ag-root-wrapper {
+            border: 1px solid var(--ag-border-color);
+        }
+        .ag-header {
+            background-color: var(--ag-header-background-color);
+            border-bottom: 1px solid var(--ag-border-color);
+        }
+        .ag-row {
+            border-bottom: 1px solid var(--ag-border-color);
+        }
+        .ag-cell {
+            padding: 0 10px;
+            line-height: 28px;
+        }
+    </style>
     
     <!-- Base styles for the application -->
     <style>
@@ -62,7 +92,7 @@
             position: relative;
         }
         
-        /* Loading screen - Shown while Perspective initializes */
+        /* Loading screen - Shown while AG-Grid initializes */
         #loading {
             position: absolute;
             top: 0;
@@ -219,18 +249,12 @@
             50% { opacity: 0.5; }
         }
         
-        /* Main content area - Where Perspective tables will be rendered */
+        /* Main content area - Where AG-Grid tables will be rendered */
         #content {
             flex: 1;
             display: flex;
             overflow: hidden;
             position: relative;
-        }
-        
-        /* Perspective viewer container */
-        #perspective-viewer {
-            width: 100%;
-            height: 100%;
         }
         
         /* Tab container for multiple tables */
@@ -334,7 +358,7 @@
     <div id="loading">
         <div class="spinner"></div>
         <div class="loading-text">Initializing Alpha V1 Trading Tool</div>
-        <div class="loading-subtext">Loading Perspective engine...</div>
+        <div class="loading-subtext">Loading AG-Grid engine...</div>
     </div>
     
     <!-- Error screen -->
@@ -372,7 +396,7 @@
                     <!-- Tabs will be dynamically added here -->
                 </div>
                 <div class="tab-content" id="tab-content">
-                    <!-- Perspective viewers will be added here -->
+                    <!-- AG-Grid viewers will be added here -->
                 </div>
             </div>
         </div>
@@ -406,6 +430,70 @@
             </div>
         </div>
     </div>
+    
+    <!-- AG-Grid JavaScript and CSS - Load before your app scripts -->
+    <script>
+        // Load AG-Grid CSS dynamically to avoid MIME type issues
+        function loadCSS(href) {
+            return new Promise((resolve, reject) => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = href;
+                link.onload = resolve;
+                link.onerror = () => {
+                    console.warn(`Failed to load CSS: ${href}`);
+                    resolve(); // Continue even if CSS fails
+                };
+                document.head.appendChild(link);
+            });
+        }
+        
+        // Try to load AG-Grid locally first, fallback to CDN
+        function loadAGGrid() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                
+                // Try local file first
+                script.src = '../node_modules/ag-grid-community/dist/ag-grid-community.min.js';
+                script.onload = () => {
+                    console.log('AG-Grid loaded from local node_modules');
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.log('Failed to load local AG-Grid, trying CDN...');
+                    
+                    // Fallback to CDN
+                    const cdnScript = document.createElement('script');
+                    cdnScript.src = 'https://unpkg.com/ag-grid-community@32.2.2/dist/ag-grid-community.min.js';
+                    cdnScript.onload = () => {
+                        console.log('AG-Grid loaded from CDN');
+                        resolve();
+                    };
+                    cdnScript.onerror = () => {
+                        console.error('Failed to load AG-Grid from both local and CDN');
+                        reject(new Error('Failed to load AG-Grid'));
+                    };
+                    document.head.appendChild(cdnScript);
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Load CSS files
+        Promise.all([
+            loadCSS('../node_modules/ag-grid-community/dist/styles/ag-grid.css'),
+            loadCSS('../node_modules/ag-grid-community/dist/styles/ag-theme-alpine.css')
+        ]).then(() => {
+            console.log('AG-Grid CSS loaded');
+        });
+        
+        // Load AG-Grid before other scripts
+        loadAGGrid().catch(err => {
+            document.getElementById('error-details').textContent = 'Failed to load AG-Grid library: ' + err.message;
+            document.getElementById('error').style.display = 'flex';
+            document.getElementById('loading').style.display = 'none';
+        });
+    </script>
     
     <!-- Load the renderer JavaScript -->
     <script type="module" src="index.js"></script>

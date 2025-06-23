@@ -400,6 +400,31 @@ class WindowManager extends EventEmitter {
         const displays = screen.getAllDisplays();
         const primaryDisplay = screen.getPrimaryDisplay();
         
+        console.log('[WindowManager] Ensuring window on screen:', {
+            passedOptions: {
+                x: windowOptions.x,
+                y: windowOptions.y,
+                width: windowOptions.width,
+                height: windowOptions.height
+            },
+            displays: displays.length,
+            primaryDisplay: primaryDisplay.bounds
+        });
+        
+        // Validate dimensions first
+        const maxWidth = primaryDisplay.workAreaSize.width;
+        const maxHeight = primaryDisplay.workAreaSize.height;
+        
+        // Ensure reasonable dimensions
+        if (windowOptions.width > maxWidth || windowOptions.width < 100) {
+            console.log(`[WindowManager] Adjusting width from ${windowOptions.width} to 1600`);
+            windowOptions.width = Math.min(1600, maxWidth);
+        }
+        if (windowOptions.height > maxHeight || windowOptions.height < 100) {
+            console.log(`[WindowManager] Adjusting height from ${windowOptions.height} to 900`);
+            windowOptions.height = Math.min(900, maxHeight);
+        }
+        
         // Check if saved position is still valid
         if (windowOptions.x !== undefined && windowOptions.y !== undefined) {
             const windowBounds = {
@@ -410,22 +435,31 @@ class WindowManager extends EventEmitter {
             };
             
             // Check if window is on any display
-            const isOnScreen = displays.some(display => {
-                const displayBounds = display.bounds;
-                return windowBounds.x >= displayBounds.x &&
-                       windowBounds.y >= displayBounds.y &&
-                       windowBounds.x + windowBounds.width <= displayBounds.x + displayBounds.width &&
-                       windowBounds.y + windowBounds.height <= displayBounds.y + displayBounds.height;
-            });
+            let isOnScreen = false;
+            for (const display of displays) {
+                const bounds = display.bounds;
+                // Check if at least 100x100 pixels of the window are visible
+                const visibleLeft = Math.max(windowBounds.x, bounds.x);
+                const visibleTop = Math.max(windowBounds.y, bounds.y);
+                const visibleRight = Math.min(windowBounds.x + windowBounds.width, bounds.x + bounds.width);
+                const visibleBottom = Math.min(windowBounds.y + windowBounds.height, bounds.y + bounds.height);
+                
+                if (visibleRight - visibleLeft >= 100 && visibleBottom - visibleTop >= 100) {
+                    isOnScreen = true;
+                    break;
+                }
+            }
             
             // If not on screen, center on primary display
             if (!isOnScreen) {
+                console.log('[WindowManager] Window position off-screen, centering');
                 delete windowOptions.x;
                 delete windowOptions.y;
                 windowOptions.center = true;
             }
         } else {
             // No saved position, center on primary display
+            console.log('[WindowManager] No saved position, centering window');
             windowOptions.center = true;
         }
     }

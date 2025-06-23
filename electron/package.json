@@ -38,10 +38,7 @@
         "lint:fix": "eslint . --ext .js --fix"
     },
     "dependencies": {
-        "@finos/perspective": "^3.6.1",
-        "@finos/perspective-viewer": "^3.6.1",
-        "@finos/perspective-viewer-d3fc": "^3.6.1",
-        "@finos/perspective-viewer-datagrid": "^3.6.1",
+        "ag-grid-community": "^32.2.2",
         "electron-log": "^5.0.3",
         "electron-store": "^8.1.0",
         "electron-updater": "^6.1.7",

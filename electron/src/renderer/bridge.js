@@ -1,15 +1,17 @@
 /**
  * Perspective Integration Bridge
  * 
- * This module handles all communication between Electron and Perspective.
+ * This module handles all communication between Electron and AG-Grid.
  * It manages table creation, data updates, and view configuration.
  * 
  * Architecture:
- * - Uses Web Workers for Perspective to keep UI thread responsive
- * - Implements binary protocol for high-frequency updates
+ * - Uses AG-Grid Community for high-performance data grids
+ * - Implements batching for high-frequency updates
  * - Manages multiple tables with different schemas
  * - Handles view persistence and restoration
  */
+
+import GridManager from './GridManager.js';
 
 // Configuration for Perspective tables
 const TABLE_CONFIGS = {
@@ -111,13 +113,13 @@ const TABLE_CONFIGS = {
  * Bridge state management
  */
 const BridgeState = {
-    // Perspective worker instance
-    worker: null,
+    // AG-Grid Manager Instance
+    gridManager: null,
     
-    // Map of table name to Perspective table instance
+    // Map of table name to table configuration
     tables: new Map(),
     
-    // Map of tab ID to viewer configuration
+    // Map of tab ID to grid configuration
     viewers: new Map(),
     
     // Update queue for batching high-frequency updates
@@ -132,94 +134,58 @@ const BridgeState = {
 };
 
 /**
- * Load Perspective library and create worker
+ * Load AG-Grid and create GridManager
  */
 async function loadPerspective() {
-    console.log('Loading Perspective library... (MOCK VERSION)');
+    console.log('Loading AG-Grid...');
     
     try {
-        // Mock the worker
-        BridgeState.worker = {
-            table: async (schema) => {
-                console.log('Mock table created with schema:', schema);
-                return {
-                    update: async (data) => console.log('Mock update:', data.length, 'rows'),
-                    replace: async (data) => console.log('Mock replace:', data.length, 'rows'),
-                    size: async () => 0,
-                    delete: () => console.log('Mock table deleted')
-                };
-            }
-        };
-        
-        // Mock perspective-viewer element
-        if (!customElements.get('perspective-viewer')) {
-            class MockPerspectiveViewer extends HTMLElement {
-                constructor() {
-                    super();
-                    // Don't set innerHTML here - wait for connectedCallback
-                }
-                
-                connectedCallback() {
-                    // Set content when element is added to DOM
-                    this.innerHTML = '<div style="padding: 20px; color: #888; text-align: center; border: 1px dashed #444;">Mock Perspective Viewer</div>';
-                }
-                
-                async load(table) {
-                    console.log('Mock viewer loaded with table');
-                    return Promise.resolve();
-                }
-                
-                async save() {
-                    return { mock: true };
-                }
-                
-                async restore(config) {
-                    console.log('Mock restore:', config);
-                    return Promise.resolve();
-                }
-                
-                notifyResize() {
-                    console.log('Mock resize notification');
-                }
-                
-                setAttribute(name, value) {
-                    super.setAttribute(name, value);
-                    console.log(`Mock viewer attribute: ${name} = ${value}`);
-                }
-            }
-            customElements.define('perspective-viewer', MockPerspectiveViewer);
+        // Wait for AG-Grid to be available
+        let attempts = 0;
+        while (typeof agGrid === 'undefined' && attempts < 50) {
+            console.log('Waiting for AG-Grid to load...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
         }
         
-        console.log('Mock Perspective loaded successfully');
+        if (typeof agGrid === 'undefined') {
+            throw new Error('AG-Grid failed to load after 5 seconds');
+        }
+        
+        console.log('AG-Grid is available, creating GridManager...');
+        
+        // Create GridManager instance
+        BridgeState.gridManager = new GridManager({
+            AppState: BridgeState.config.AppState,
+            isDevelopment: BridgeState.config.electronAPI.isDevelopment
+        });
+        
+        console.log('AG-Grid loaded successfully');
         return true;
         
     } catch (error) {
-        console.error('Failed to load mock Perspective:', error);
+        console.error('Failed to load AG-Grid:', error);
         throw error;
     }
 }
 
 /**
- * Create a Perspective table with schema
+ * Create a table configuration
  * @param {string} tableId - Unique table identifier
  * @param {object} config - Table configuration
  */
 async function createTable(tableId, config) {
-    console.log(`Creating table: ${tableId}`, config);
+    console.log(`Creating table configuration: ${tableId}`);
     
     try {
-        // Create table in worker with schema
-        const table = await BridgeState.worker.table(config.schema);
-        
-        // Store table reference
+        // Store table configuration
         BridgeState.tables.set(tableId, {
-            instance: table,
             config: config,
             rowCount: 0
         });
         
-        console.log(`Table created: ${tableId}`);
-        return table;
+        console.log(`Table configuration stored: ${tableId}`);
+        return true;
         
     } catch (error) {
         console.error(`Failed to create table ${tableId}:`, error);
@@ -228,13 +194,13 @@ async function createTable(tableId, config) {
 }
 
 /**
- * Create a Perspective viewer for a table
+ * Create an AG-Grid viewer for a table
  * @param {string} tabId - Tab identifier
  * @param {string} tableId - Table to display
  * @param {object} container - DOM container for viewer
  */
 async function createViewer(tabId, tableId, container) {
-    console.log(`Creating viewer for tab: ${tabId}, table: ${tableId}`);
+    console.log(`Creating AG-Grid viewer for tab: ${tabId}, table: ${tableId}`);
     
     try {
         // Get table configuration
@@ -243,58 +209,43 @@ async function createViewer(tabId, tableId, container) {
             throw new Error(`Unknown table configuration: ${tableId}`);
         }
         
-        // Create viewer element
-        const viewer = document.createElement('perspective-viewer');
-        viewer.setAttribute('id', `viewer-${tabId}`);
-        viewer.style.width = '100%';
-        viewer.style.height = '100%';
+        // Create container div for the grid
+        const gridContainer = document.createElement('div');
+        gridContainer.id = `grid-container-${tabId}`;
+        gridContainer.style.width = '100%';
+        gridContainer.style.height = '100%';
+        container.appendChild(gridContainer);
         
-        // Apply dark theme
-        viewer.setAttribute('theme', 'Material Dark');
-        
-        // Configure viewer settings
-        viewer.setAttribute('editable', 'false'); // Read-only for trading data
-        viewer.setAttribute('column-pivots', '[]'); // No pivoting by default
-        viewer.setAttribute('row-pivots', '[]');
-        viewer.setAttribute('filters', JSON.stringify(tableConfig.defaultView.filter || []));
-        viewer.setAttribute('columns', JSON.stringify(tableConfig.defaultView.columns));
-        viewer.setAttribute('sort', JSON.stringify(tableConfig.defaultView.sort || []));
-        
-        // Add to container
-        container.appendChild(viewer);
-        
-        // Get or create table
-        let table = BridgeState.tables.get(tableId);
-        if (!table) {
-            await createTable(tableId, tableConfig);
-            table = BridgeState.tables.get(tableId);
-        }
-        
-        // Load table into viewer
-        await viewer.load(table.instance);
+        // Create AG-Grid instance
+        const grid = await BridgeState.gridManager.createGrid(
+            tableId,
+            gridContainer,
+            tableConfig
+        );
         
         // Store viewer reference
         BridgeState.viewers.set(tabId, {
-            element: viewer,
+            element: gridContainer,
+            grid: grid,
             tableId: tableId,
             container: container
         });
         
-        // Set up viewer event handlers
-        setupViewerEvents(tabId, viewer);
+        // Set up event handlers
+        setupViewerEvents(tabId, gridContainer);
         
         // Load saved view configuration if exists
-        await loadViewerState(tabId, viewer);
+        await loadViewerState(tabId, gridContainer);
         
-        console.log(`Viewer created for ${tabId}`);
+        console.log(`AG-Grid created for ${tabId}`);
         
         return {
-            instance: viewer,
+            instance: grid,
             container: container
         };
         
     } catch (error) {
-        console.error(`Failed to create viewer for ${tabId}:`, error);
+        console.error(`Failed to create AG-Grid for ${tabId}:`, error);
         throw error;
     }
 }
@@ -302,62 +253,23 @@ async function createViewer(tabId, tableId, container) {
 /**
  * Set up event handlers for a viewer
  * @param {string} tabId - Tab identifier
- * @param {HTMLElement} viewer - Perspective viewer element
+ * @param {HTMLElement} gridContainer - Grid container element
  */
-function setupViewerEvents(tabId, viewer) {
-    // Save view configuration when changed
-    viewer.addEventListener('perspective-config-update', async (event) => {
-        console.log(`View config updated for ${tabId}`);
-        
-        try {
-            // Get current view configuration
-            const config = await viewer.save();
-            
-            // Save to persistent storage
-            await BridgeState.config.electronAPI.state.save(
-                `perspective.views.${tabId}`,
-                config
-            );
-        } catch (error) {
-            console.error(`Failed to save view config for ${tabId}:`, error);
-        }
-    });
-    
-    // Handle selection changes
-    viewer.addEventListener('perspective-select', (event) => {
-        console.log(`Selection in ${tabId}:`, event.detail);
-        // Could emit events to main process here
-    });
-    
-    // Handle double-clicks (e.g., to open symbol details)
-    viewer.addEventListener('perspective-click', (event) => {
-        const { column_names, config, row } = event.detail;
-        if (event.detail.config.x === 2) { // Double click
-            console.log(`Double-click in ${tabId}:`, { column_names, row });
-            // Could open symbol details window here
-        }
-    });
+function setupViewerEvents(tabId, gridContainer) {
+    // AG-Grid handles most events internally
+    // Add any custom event handlers here if needed
+    console.log(`Events configured for ${tabId}`);
 }
 
 /**
  * Load saved viewer state
  * @param {string} tabId - Tab identifier
- * @param {HTMLElement} viewer - Perspective viewer element
+ * @param {HTMLElement} gridContainer - Grid container element
  */
-async function loadViewerState(tabId, viewer) {
-    try {
-        // Load saved view configuration
-        const savedConfig = await BridgeState.config.electronAPI.state.load(
-            `perspective.views.${tabId}`
-        );
-        
-        if (savedConfig) {
-            console.log(`Loading saved view config for ${tabId}`);
-            await viewer.restore(savedConfig);
-        }
-    } catch (error) {
-        console.error(`Failed to load view state for ${tabId}:`, error);
-    }
+async function loadViewerState(tabId, gridContainer) {
+    // AG-Grid state management can be implemented here
+    // For now, we'll skip this as AG-Grid handles its own state well
+    console.log(`State loading for ${tabId} - not implemented yet`);
 }
 
 /**
@@ -367,23 +279,9 @@ async function loadViewerState(tabId, viewer) {
  * @param {boolean} replace - Replace all data (true) or append (false)
  */
 async function updateTable(tableId, data, replace = false) {
-    const table = BridgeState.tables.get(tableId);
-    if (!table) {
-        console.error(`Table not found: ${tableId}`);
-        return;
-    }
-    
     try {
-        if (replace) {
-            // Replace all data
-            await table.instance.replace(data);
-        } else {
-            // Append/update data
-            await table.instance.update(data);
-        }
-        
-        // Update row count
-        table.rowCount = await table.instance.size();
+        // Use GridManager's update method
+        BridgeState.gridManager.updateGrid(tableId, data, replace);
         
         // Track update count
         BridgeState.updateCount++;
@@ -455,7 +353,7 @@ async function processUpdateQueue() {
             }
         }
         
-        // Apply updates
+        // Apply updates through GridManager
         await updateTable(tableId, combinedData, shouldReplace);
         
         // Clear processed updates
@@ -509,7 +407,7 @@ async function createAllViewers() {
 async function loadSampleData() {
     console.log('Loading sample data...');
     
-    // Sample scanner data
+    // Sample scanner data with all required fields
     const scannerData = [
         {
             symbol: 'AAPL',
@@ -543,7 +441,54 @@ async function loadSampleData() {
             alerts: 1,
             timestamp: new Date()
         },
-        // Add more sample data...
+        {
+            symbol: 'GOOGL',
+            price: 142.58,
+            change: 3.12,
+            changePercent: 2.24,
+            volume: 32145678,
+            relativeVolume: 2.1,
+            marketCap: 1823000000000,
+            float: 11200000000,
+            shortFloat: 1.23,
+            atr: 2.89,
+            beta: 1.15,
+            rsi: 71.3,
+            alerts: 5,
+            timestamp: new Date()
+        },
+        {
+            symbol: 'TSLA',
+            price: 238.92,
+            change: -5.43,
+            changePercent: -2.22,
+            volume: 98765432,
+            relativeVolume: 1.67,
+            marketCap: 759000000000,
+            float: 2710000000,
+            shortFloat: 3.45,
+            atr: 8.92,
+            beta: 1.89,
+            rsi: 38.7,
+            alerts: 2,
+            timestamp: new Date()
+        },
+        {
+            symbol: 'NVDA',
+            price: 485.67,
+            change: 12.34,
+            changePercent: 2.61,
+            volume: 67890123,
+            relativeVolume: 3.2,
+            marketCap: 1193000000000,
+            float: 2460000000,
+            shortFloat: 1.89,
+            atr: 11.23,
+            beta: 1.67,
+            rsi: 72.5,
+            alerts: 4,
+            timestamp: new Date()
+        }
     ];
     
     await updateTable('scanner', scannerData, true);
@@ -564,10 +509,89 @@ async function loadSampleData() {
             takeProfit: 185.00,
             duration: 3600,
             timestamp: new Date()
+        },
+        {
+            symbol: 'TSLA',
+            side: 'SHORT',
+            quantity: 50,
+            entryPrice: 245.00,
+            currentPrice: 238.92,
+            marketValue: 11946,
+            unrealizedPL: 304,
+            unrealizedPLPercent: 2.48,
+            realizedPL: 0,
+            stopLoss: 250.00,
+            takeProfit: 230.00,
+            duration: 7200,
+            timestamp: new Date()
         }
     ];
     
     await updateTable('positions', positionsData, true);
+    
+    // Sample signals data
+    const signalsData = [
+        {
+            id: 'sig-001',
+            timestamp: new Date(),
+            symbol: 'NVDA',
+            type: 'ENTRY',
+            direction: 'BUY',
+            strength: 85,
+            price: 485.50,
+            stopLoss: 478.00,
+            takeProfit: 498.00,
+            confidence: 0.89,
+            source: 'Momentum Scanner',
+            status: 'ACTIVE',
+            notes: 'Strong breakout on volume'
+        },
+        {
+            id: 'sig-002',
+            timestamp: new Date(Date.now() - 300000), // 5 minutes ago
+            symbol: 'AMD',
+            type: 'ENTRY',
+            direction: 'BUY',
+            strength: 72,
+            price: 122.30,
+            stopLoss: 120.00,
+            takeProfit: 126.00,
+            confidence: 0.76,
+            source: 'Pattern Recognition',
+            status: 'ACTIVE',
+            notes: 'Bull flag formation'
+        }
+    ];
+    
+    await updateTable('signals', signalsData, true);
+    
+    // Sample levels data
+    const levelsData = [
+        {
+            symbol: 'SPY',
+            type: 'SUPPORT',
+            level: 428.50,
+            strength: 4,
+            touches: 5,
+            lastTouch: new Date(Date.now() - 3600000), // 1 hour ago
+            created: new Date(Date.now() - 86400000), // 1 day ago
+            timeframe: '1h',
+            active: true
+        },
+        {
+            symbol: 'SPY',
+            type: 'RESISTANCE',
+            level: 432.75,
+            strength: 5,
+            touches: 7,
+            lastTouch: new Date(Date.now() - 1800000), // 30 minutes ago
+            created: new Date(Date.now() - 172800000), // 2 days ago
+            timeframe: '4h',
+            active: true
+        }
+    ];
+    
+    await updateTable('levels', levelsData, true);
 }
 
 /**
@@ -575,16 +599,16 @@ async function loadSampleData() {
  * Called from index.js
  */
 export async function initialize(config) {
-    console.log('Initializing Perspective bridge...');
+    console.log('Initializing AG-Grid bridge...');
     
     // Store configuration
     BridgeState.config = config;
     
     try {
-        // Load Perspective library
+        // Load AG-Grid
         await loadPerspective();
         
-        // Create tables
+        // Create table configurations
         for (const [tableId, tableConfig] of Object.entries(TABLE_CONFIGS)) {
             await createTable(tableId, tableConfig);
         }
@@ -606,11 +630,15 @@ export async function initialize(config) {
             getMetrics: () => ({
                 updateCount: BridgeState.updateCount,
                 tableCount: BridgeState.tables.size,
-                viewerCount: BridgeState.viewers.size
-            })
+                viewerCount: BridgeState.viewers.size,
+                // Add GridManager metrics
+                ...BridgeState.gridManager?.getMetrics()
+            }),
+            // Add GridManager reference for debugging
+            gridManager: BridgeState.gridManager
         };
         
-        console.log('Perspective bridge initialized successfully');
+        console.log('AG-Grid bridge initialized successfully');
         
         // Notify ready callback
         if (config.callbacks.onReady) {
@@ -618,7 +646,7 @@ export async function initialize(config) {
         }
         
     } catch (error) {
-        console.error('Failed to initialize Perspective bridge:', error);
+        console.error('Failed to initialize AG-Grid bridge:', error);
         if (config.callbacks.onError) {
             config.callbacks.onError(error);
         }

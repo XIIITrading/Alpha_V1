@@ -128,17 +128,18 @@ app.whenReady().then(async () => {
             }
         });
 
-// Initialize the bridge
-try {
-    await polygonBridge.initialize();
-    console.log('[Main] PolygonBridge initialized successfully');
-} catch (error) {
-    console.error('[Main] Failed to initialize PolygonBridge:', error);
-    if (!isDevelopment) {
-        dialog.showErrorBox('Connection Error', 
-            'Failed to connect to market data server. Please ensure the server is running.');
-    }
-}
+        // Initialize the bridge
+        try {
+            await polygonBridge.initialize();
+            console.log('[Main] PolygonBridge initialized successfully');
+        } catch (error) {
+            console.error('[Main] Failed to initialize PolygonBridge:', error);
+            if (!isDevelopment) {
+                dialog.showErrorBox('Connection Error', 
+                    'Failed to connect to market data server. Please ensure the server is running.');
+            }
+        }
+        
         // Set up application menu
         const menuBuilder = new MenuBuilder({
             windowManager: windowManager,
@@ -152,25 +153,160 @@ try {
             appUpdater.checkForUpdates();
         }
         
-        // Create the main application window
-        const mainWindow = await windowManager.createWindow('main', {
-            width: stateManager.get('windowStates.main.width', 1600),
-            height: stateManager.get('windowStates.main.height', 900),
-            x: stateManager.get('windowStates.main.x'),
-            y: stateManager.get('windowStates.main.y')
+        // Get window dimensions and position
+        // Note: WindowManager creates IDs like "main-1", so we need to check both
+        const windowId = 'main-1'; // First main window
+        const width = stateManager.get(`windowStates.${windowId}.width`) || 
+                     stateManager.get('windowStates.main.width', 1600);
+        const height = stateManager.get(`windowStates.${windowId}.height`) || 
+                      stateManager.get('windowStates.main.height', 900);
+        let x = stateManager.get(`windowStates.${windowId}.x`) || 
+                stateManager.get('windowStates.main.x');
+        let y = stateManager.get(`windowStates.${windowId}.y`) || 
+                stateManager.get('windowStates.main.y');
+        
+        // Validate window position - reset if off-screen
+        const { screen } = require('electron');
+        const displays = screen.getAllDisplays();
+        const primaryDisplay = screen.getPrimaryDisplay();
+        
+        console.log('[Main] Available displays:', displays.length);
+        displays.forEach((display, index) => {
+            console.log(`[Main] Display ${index}:`, {
+                id: display.id,
+                bounds: display.bounds,
+                workArea: display.workArea,
+                scaleFactor: display.scaleFactor
+            });
         });
+        
+        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+        const scaleFactor = primaryDisplay.scaleFactor || 1;
+        
+        console.log('[Main] Primary display scale factor:', scaleFactor);
+        
+        // Check if window position is valid
+        let isPositionValid = false;
+        if (x !== undefined && y !== undefined) {
+            // Check if position is within any display
+            isPositionValid = displays.some(display => {
+                const bounds = display.bounds;
+                return x >= bounds.x && x < bounds.x + bounds.width &&
+                       y >= bounds.y && y < bounds.y + bounds.height;
+            });
+        }
+        
+        if (!isPositionValid) {
+            console.log('[Main] Window position invalid or off-screen, centering on primary display');
+            x = primaryDisplay.bounds.x + Math.round((screenWidth - width) / 2);
+            y = primaryDisplay.bounds.y + Math.round((screenHeight - height) / 2);
+        }
+        
+        // Ensure reasonable dimensions
+        const finalWidth = Math.min(width, screenWidth);
+        const finalHeight = Math.min(height, screenHeight);
+        
+        console.log('[Main] Screen dimensions:', { screenWidth, screenHeight });
+        console.log('[Main] Creating main window with dimensions:', { 
+            width: finalWidth, 
+            height: finalHeight, 
+            x, 
+            y 
+        });
+        
+        // Create the main application window - don't pass saved state, let WindowManager handle it
+        const mainWindow = await windowManager.createWindow('main', {
+            width: 1600,
+            height: 900,
+            center: true, // Always center on first launch
+            show: false   // Don't show until positioned
+        });
+        
+        // Add debugging and ensure window is shown
+        if (mainWindow) {
+            console.log('[Main] Main window created successfully');
+            console.log('[Main] Window ID:', mainWindow.id);
+            console.log('[Main] Window visible:', mainWindow.isVisible());
+            console.log('[Main] Window bounds:', mainWindow.getBounds());
+            console.log('[Main] Window is minimized:', mainWindow.isMinimized());
+            console.log('[Main] Window is focused:', mainWindow.isFocused());
+            
+            // Force show the window if it's not visible
+            if (!mainWindow.isVisible()) {
+                console.log('[Main] Window not visible, forcing show...');
+                mainWindow.show();
+            }
+            
+            // If window is minimized, restore it
+            if (mainWindow.isMinimized()) {
+                console.log('[Main] Window is minimized, restoring...');
+                mainWindow.restore();
+            }
+            
+            // Force correct window bounds after creation
+            setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    console.log('[Main] Force-setting window bounds to correct values');
+                    mainWindow.setBounds({
+                        x: x,
+                        y: y,
+                        width: finalWidth,
+                        height: finalHeight
+                    });
+                    mainWindow.center();
+                    mainWindow.show();
+                    mainWindow.focus();
+                }
+            }, 100);
+            
+            // Set up event handlers for debugging
+            
+            mainWindow.on('show', () => {
+                console.log('[Main] Window show event');
+            });
+            
+            mainWindow.on('hide', () => {
+                console.log('[Main] Window hide event');
+            });
+            
+            mainWindow.on('close', () => {
+                console.log('[Main] Window closing');
+            });
+            
+            mainWindow.on('closed', () => {
+                console.log('[Main] Window closed');
+            });
+            
+            // Notify renderer that application is ready
+            mainWindow.webContents.on('did-finish-load', () => {
+                console.log('[Main] Window finished loading');
+                mainWindow.webContents.send('app:ready', {
+                    version: app.getVersion(),
+                    platform: process.platform,
+                    config: appConfig.common
+                });
+            });
+            
+            mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+                console.error('[Main] Window failed to load:', errorCode, errorDescription);
+            });
+            
+            mainWindow.webContents.on('crashed', (event, killed) => {
+                console.error('[Main] Window crashed:', killed);
+            });
+            
+            // Open DevTools in development
+            if (isDevelopment) {
+                mainWindow.webContents.openDevTools();
+            }
+            
+        } else {
+            console.error('[Main] Failed to create main window - window is null');
+            throw new Error('Failed to create main window');
+        }
         
         // Set up global shortcuts (imported from config)
         setupGlobalShortcuts();
-        
-        // Notify renderer that application is ready
-        mainWindow.webContents.on('did-finish-load', () => {
-            mainWindow.webContents.send('app:ready', {
-                version: app.getVersion(),
-                platform: process.platform,
-                config: appConfig.common
-            });
-        });
         
         console.log('[Main] Application initialized successfully');
         
